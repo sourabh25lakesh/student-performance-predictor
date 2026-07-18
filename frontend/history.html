@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Prediction History | Student Performance Predictor</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="assets/css/style.css" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="dashboard.html">Student Predictor</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="mainNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item"><a class="nav-link" href="dashboard.html">Dashboard</a></li>
+                    <li class="nav-item"><a class="nav-link" href="predict.html">Predict Marks</a></li>
+                    <li class="nav-item"><a class="nav-link active" href="history.html">History</a></li>
+                    <li class="nav-item"><a class="nav-link" href="trash.html">Trash</a></li>
+                    <li class="nav-item"><a class="nav-link" href="profile.html">Profile</a></li>
+                    <li class="nav-item"><button id="logoutButton" class="btn btn-light btn-sm ms-lg-3 mt-2 mt-lg-1">Logout</button></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container page-shell py-4">
+        <div class="d-flex flex-column flex-md-row justify-content-between gap-3 mb-4">
+            <h1 class="h3 mb-0">Prediction History</h1>
+            <a href="predict.html" class="btn btn-primary align-self-start">New Prediction</a>
+        </div>
+
+        <div id="historyAlert" class="alert alert-danger d-none"></div>
+        <div id="historySuccess" class="alert alert-success d-none"></div>
+
+        <div class="card">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Student</th>
+                                <th>Hours</th>
+                                <th>Attendance</th>
+                                <th>Previous</th>
+                                <th>Predicted</th>
+                                <th>Grade</th>
+                                <th>Status</th>
+                                <th>Date</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="historyTable">
+                            <tr><td colspan="9" class="empty-state">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+
+    <div id="historyModals">
+        <div class="modal fade" id="viewPredictionModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h2 class="modal-title h5">Prediction Details</h2>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <dl class="row mb-0">
+                            <dt class="col-sm-5">Student</dt>
+                            <dd id="viewStudentName" class="col-sm-7"></dd>
+                            <dt class="col-sm-5">Hours Studied</dt>
+                            <dd id="viewHoursStudied" class="col-sm-7"></dd>
+                            <dt class="col-sm-5">Attendance</dt>
+                            <dd id="viewAttendance" class="col-sm-7"></dd>
+                            <dt class="col-sm-5">Previous Marks</dt>
+                            <dd id="viewPreviousMarks" class="col-sm-7"></dd>
+                            <dt class="col-sm-5">Predicted Marks</dt>
+                            <dd id="viewPredictedMarks" class="col-sm-7"></dd>
+                            <dt class="col-sm-5">Grade</dt>
+                            <dd id="viewGrade" class="col-sm-7"></dd>
+                            <dt class="col-sm-5">Status</dt>
+                            <dd id="viewStatus" class="col-sm-7"></dd>
+                            <dt class="col-sm-5">Date</dt>
+                            <dd id="viewCreatedAt" class="col-sm-7"></dd>
+                        </dl>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="assets/js/app.js"></script>
+    <script>
+        requireAuth();
+        let historyItems = [];
+
+        document.getElementById("historyModals").insertAdjacentHTML("beforeend", createConfirmModal({
+            modalId: "deletePredictionModal",
+            title: "Move to Trash",
+            message: "Are you sure you want to move this prediction to Trash?",
+            confirmText: "Move to Trash",
+            confirmClass: "btn-danger",
+        }));
+
+        async function loadHistory() {
+            setLoading(true);
+            hideAlert("historyAlert");
+            try {
+                historyItems = await apiRequest("/predictions");
+                const tbody = document.getElementById("historyTable");
+
+                if (!historyItems.length) {
+                    tbody.innerHTML = `<tr><td colspan="9" class="empty-state">No prediction history found.</td></tr>`;
+                    return;
+                }
+
+                tbody.innerHTML = historyItems.map((item) => `
+                    <tr>
+                        <td>${escapeHtml(item.student_name)}</td>
+                        <td>${item.hours_studied}</td>
+                        <td>${item.attendance}%</td>
+                        <td>${item.previous_marks}</td>
+                        <td>${item.predicted_marks}</td>
+                        <td>${item.grade}</td>
+                        <td>${statusBadge(item.status)}</td>
+                        <td>${formatDate(item.created_at)}</td>
+                        <td class="actions-cell">
+                            <button type="button" class="btn btn-outline-primary btn-sm me-1" onclick="viewPrediction(${item.id})">View</button>
+                            <button type="button" class="btn btn-outline-danger btn-sm" onclick="confirmSoftDelete(${item.id})">Delete</button>
+                        </td>
+                    </tr>
+                `).join("");
+            } catch (error) {
+                showAlert("historyAlert", error.message);
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        function viewPrediction(predictionId) {
+            const item = historyItems.find((prediction) => prediction.id === predictionId);
+            if (!item) return;
+
+            document.getElementById("viewStudentName").textContent = item.student_name;
+            document.getElementById("viewHoursStudied").textContent = item.hours_studied;
+            document.getElementById("viewAttendance").textContent = `${item.attendance}%`;
+            document.getElementById("viewPreviousMarks").textContent = item.previous_marks;
+            document.getElementById("viewPredictedMarks").textContent = item.predicted_marks;
+            document.getElementById("viewGrade").textContent = item.grade;
+            document.getElementById("viewStatus").innerHTML = statusBadge(item.status);
+            document.getElementById("viewCreatedAt").textContent = formatDate(item.created_at);
+            bootstrap.Modal.getOrCreateInstance(document.getElementById("viewPredictionModal")).show();
+        }
+
+        function confirmSoftDelete(predictionId) {
+            showConfirmModal("deletePredictionModal", async () => {
+                setLoading(true);
+                hideAlert("historyAlert");
+                hideAlert("historySuccess");
+                try {
+                    const result = await apiRequest(`/predictions/${predictionId}/soft-delete`, {
+                        method: "PATCH",
+                    });
+                    showAlert("historySuccess", result.message, "success");
+                    await loadHistory();
+                } catch (error) {
+                    showAlert("historyAlert", error.message);
+                } finally {
+                    setLoading(false);
+                }
+            });
+        }
+
+        loadHistory();
+    </script>
+</body>
+</html>

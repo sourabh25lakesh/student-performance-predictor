@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Dashboard | Student Performance Predictor</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link href="assets/css/style.css" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg premium-navbar">
+        <div class="container">
+            <a class="navbar-brand" href="dashboard.html"><span class="brand-mark"><i class="bi bi-mortarboard-fill"></i></span>Student Predictor</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="mainNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item"><a class="nav-link active" href="dashboard.html"><i class="bi bi-speedometer2 me-1"></i>Dashboard</a></li>
+                    <li class="nav-item"><a class="nav-link" href="predict.html"><i class="bi bi-stars me-1"></i>Predict</a></li>
+                    <li class="nav-item"><a class="nav-link" href="history.html"><i class="bi bi-clock-history me-1"></i>History</a></li>
+                    <li class="nav-item"><a class="nav-link" href="trash.html"><i class="bi bi-trash3 me-1"></i>Trash</a></li>
+                    <li class="nav-item"><a class="nav-link" href="profile.html"><i class="bi bi-person-circle me-1"></i>Profile</a></li>
+                    <li class="nav-item"><button id="logoutButton" class="btn btn-logout btn-sm ms-lg-3 mt-2 mt-lg-1"><i class="bi bi-box-arrow-right me-1"></i>Logout</button></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container page-shell py-4 fade-page">
+        <div class="d-flex flex-column flex-md-row justify-content-between gap-3 page-heading slide-up">
+            <div>
+                <div class="eyebrow">Analytics Overview</div>
+                <h1 class="h2 fw-bold mb-1">Dashboard</h1>
+                <p id="welcomeText" class="text-muted mb-0">Welcome back.</p>
+            </div>
+            <a href="predict.html" class="btn btn-primary align-self-start"><i class="bi bi-plus-circle me-1"></i>New Prediction</a>
+        </div>
+
+        <div id="dashboardAlert" class="alert alert-danger d-none"></div>
+
+        <div class="row g-3 mb-4">
+            <div class="col-sm-6 col-lg-3">
+                <div class="card stat-card">
+                    <div class="card-body">
+                        <div class="stat-icon"><i class="bi bi-bar-chart-line"></i></div>
+                        <p class="metric-label">Total Predictions</p>
+                        <div id="totalPredictions" class="stat-value">0</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-sm-6 col-lg-3">
+                <div class="card stat-card">
+                    <div class="card-body">
+                        <div class="stat-icon"><i class="bi bi-check2-circle"></i></div>
+                        <p class="metric-label">Pass</p>
+                        <div id="passCount" class="stat-value text-success">0</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-sm-6 col-lg-3">
+                <div class="card stat-card">
+                    <div class="card-body">
+                        <div class="stat-icon"><i class="bi bi-x-circle"></i></div>
+                        <p class="metric-label">Fail</p>
+                        <div id="failCount" class="stat-value text-danger">0</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-sm-6 col-lg-3">
+                <div class="card stat-card">
+                    <div class="card-body">
+                        <div class="stat-icon"><i class="bi bi-graph-up-arrow"></i></div>
+                        <p class="metric-label">Average Marks</p>
+                        <div id="averageMarks" class="stat-value">0</div>
+                        <div class="progress mt-2">
+                            <div id="averageProgress" class="progress-bar" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card table-card">
+            <div class="card-header bg-white">
+                <h2 class="h5 mb-0"><i class="bi bi-table me-2 text-primary"></i>Latest Predictions</h2>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Student</th>
+                                <th>Marks</th>
+                                <th>Grade</th>
+                                <th>Status</th>
+                                <th>Date</th>
+                            </tr>
+                        </thead>
+                        <tbody id="latestPredictions">
+                            <tr><td colspan="5" class="empty-state"><i class="bi bi-hourglass-split"></i>Loading predictions...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="assets/js/app.js"></script>
+    <script>
+        requireAuth();
+
+        async function loadDashboard() {
+            setLoading(true);
+            try {
+                const user = await loadCurrentUser();
+                document.getElementById("welcomeText").textContent = `Welcome back, ${user.name}.`;
+
+                const dashboard = await apiRequest("/dashboard");
+                animateCounter("totalPredictions", dashboard.total_predictions);
+                animateCounter("passCount", dashboard.pass_count);
+                animateCounter("failCount", dashboard.fail_count);
+                animateCounter("averageMarks", dashboard.average_predicted_marks, 2);
+                document.getElementById("averageProgress").style.width = `${Math.min(dashboard.average_predicted_marks, 100)}%`;
+
+                const tbody = document.getElementById("latestPredictions");
+                if (!dashboard.latest_predictions.length) {
+                    tbody.innerHTML = renderEmptyState(5, "bi-inbox", "No predictions yet.");
+                    return;
+                }
+
+                tbody.innerHTML = dashboard.latest_predictions.map((item) => `
+                    <tr>
+                        <td>${escapeHtml(item.student_name)}</td>
+                        <td>${item.predicted_marks}</td>
+                        <td>${gradeBadge(item.grade)}</td>
+                        <td>${statusBadge(item.status)}</td>
+                        <td>${formatDate(item.created_at)}</td>
+                    </tr>
+                `).join("");
+            } catch (error) {
+                showAlert("dashboardAlert", error.message);
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        loadDashboard();
+    </script>
+</body>
+</html>
