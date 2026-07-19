@@ -1,4 +1,4 @@
-const API_BASE_URL = "https://YOUR-BACKEND.onrender.com";
+const API_BASE_URL = "https://student-performance-predictor-u0uq.onrender.com";
 const TOKEN_KEY = "student_predictor_token";
 
 function getToken() {
